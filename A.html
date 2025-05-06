@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>サイバーパンクピアノ & コンギョ演奏</title>
+  <script src="https://unpkg.com/tone"></script>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      font-family: 'Orbitron', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: white;
+    }
+    h1 {
+      margin-top: 20px;
+      text-shadow: 0 0 20px #0ff;
+    }
+    .controls {
+      margin: 20px;
+      display: flex;
+      gap: 20px;
+      justify-content: center;
+    }
+    select, input {
+      background: black;
+      border: 1px solid #0ff;
+      color: white;
+      padding: 5px;
+      box-shadow: 0 0 10px #0ff;
+    }
+    .piano {
+      position: relative;
+      display: flex;
+      margin-top: 20px;
+    }
+    .key {
+      width: 40px;
+      height: 200px;
+      background: linear-gradient(135deg, #0ff, #f0f, #0f0, #ff0, #0ff);
+      background-size: 400% 400%;
+      animation: rainbow 5s linear infinite;
+      border: 1px solid #0ff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px #0ff;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      font-weight: bold;
+      position: relative;
+      z-index: 0;
+    }
+    .key:active {
+      box-shadow: 0 0 30px white;
+      transform: scale(0.95);
+    }
+    .black {
+      background: black;
+      color: white;
+      height: 120px;
+      width: 30px;
+      position: absolute;
+      margin-left: -15px;
+      z-index: 2;
+    }
+    .cold {
+      filter: brightness(0.5);
+    }
+    @keyframes rainbow {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+  </style>
+</head>
+<body>
+  <h1>サイバーパンクピアノ & コンギョ演奏</h1>
+  <div class="controls">
+    <label>波形:
+      <select id="oscType">
+        <option>sine</option>
+        <option>square</option>
+        <option>triangle</option>
+        <option>sawtooth</option>
+        <option>fatsine</option>
+        <option>fatsawtooth</option>
+      </select>
+    </label>
+    <label>カットオフ:
+      <input id="cutoff" type="range" min="100" max="5000" value="1500" />
+    </label>
+    <button id="play">自動演奏</button>
+  </div>
+  <div class="piano" id="piano"></div>
+
+  <script>
+    const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const pianoDiv = document.getElementById("piano");
+    const oscTypeEl = document.getElementById("oscType");
+    const cutoffEl = document.getElementById("cutoff");
+    const playButton = document.getElementById("play");
+
+    let synth, filter;
+
+    Tone.start();
+
+    function createSynth() {
+      filter = new Tone.Filter({
+        type: "lowpass",
+        frequency: parseFloat(cutoffEl.value),
+      }).toDestination();
+      synth = new Tone.Synth({
+        oscillator: { type: oscTypeEl.value },
+        envelope: {
+          attack: 0.02,
+          decay: 0.3,
+          sustain: 0.1,
+          release: 1.5
+        }
+      }).connect(filter);
+    }
+
+    function isBlackNote(name) {
+      return name.includes("#");
+    }
+
+    function midiToNoteName(midi) {
+      const note = noteNames[midi % 12];
+      const octave = Math.floor(midi / 12) - 1;
+      return note + octave;
+    }
+
+    function updateKeys() {
+      createSynth();
+      pianoDiv.innerHTML = '';
+      for (let i = 60; i <= 72; i++) {
+        const noteName = midiToNoteName(i);
+        const isBlack = isBlackNote(noteName);
+
+        const key = document.createElement("div");
+        key.className = "key";
+        key.textContent = noteName;
+
+        if (isBlack) {
+          key.classList.add("black");
+          const hue = (i * 31) % 360;
+          if ((hue >= 50 && hue <= 70) || (hue >= 180 && hue <= 210)) {
+            key.style.backgroundColor = `hsl(${hue},100%,50%)`;
+          } else {
+            key.style.backgroundColor = `hsl(${hue},100%,30%)`;
+            key.classList.add("cold");
+          }
+          key.style.left = `${(i - 60) * 40 - 10}px`;
+          key.style.position = "absolute";
+        }
+
+        key.onclick = () => {
+          synth.triggerAttackRelease(Tone.Frequency(i, "midi").toFrequency(), "2n", undefined, 0.8);
+        };
+
+        pianoDiv.appendChild(key);
+      }
+    }
+
+    // コンギョメロディを自動演奏
+    const melody = [
+      { note: 'E4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'F4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'D4', duration: '8n' }, { note: 'C4', duration: '8n' },
+      { note: 'B3', duration: '8n' }, { note: 'A3', duration: '8n' },
+      { note: 'B3', duration: '8n' }, { note: 'C4', duration: '8n' },
+      { note: 'D4', duration: '8n' }, { note: 'E4', duration: '4n' },
+
+      { note: 'A4', duration: '8n' }, { note: 'A4', duration: '8n' },
+      { note: 'B4', duration: '8n' }, { note: 'C5', duration: '8n' },
+      { note: 'C5', duration: '8n' }, { note: 'B4', duration: '8n' },
+      { note: 'A4', duration: '8n' }, { note: 'G4', duration: '8n' },
+      { note: 'G4', duration: '8n' }, { note: 'A4', duration: '8n' },
+      { note: 'F4', duration: '8n' }, { note: 'E4', duration: '4n' },
+
+      { note: null, duration: '8n' }, // 休符
+      { note: 'F4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'D4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'A4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'E4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'D4', duration: '8n' }, { note: 'C4', duration: '8n' },
+
+      { note: 'E4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'E4', duration: '8n' }, { note: 'E4', duration: '8n' },
+      { note: 'D4', duration: '8n' }, { note: 'C4', duration: '8n' },
+      { note: 'B3', duration: '8n' }, { note: 'A3', duration: '2n' },
+
+      { note: 'G3', duration: '2n' }, { note: 'E3', duration: '2n' },
+      { note: 'A3', duration: '2n' }, { note: 'G3', duration: '2n' },
+
+      { note: 'F3', duration: '4n' }, { note: 'E3', duration: '4n' },
+      { note: 'D3', duration: '4n' }, { note: 'C3', duration: '4n' },
+      { note: 'E3', duration: '2n' }
+    ];
+
+    function playMelody() {
+      let time = Tone.now();
+      melody.forEach((noteObj) => {
+        if (noteObj.note) {
+          synth.triggerAttackRelease(noteObj.note, noteObj.duration, time);
+        }
+        time += Tone.Time(noteObj.duration).toSeconds();
+      });
+    }
+
+    // 自動演奏ボタン
+    playButton.addEventListener("click", () => {
+      playMelody();
+    });
+
+    cutoffEl.addEventListener("input", () => {
+      if (filter) filter.frequency.value = parseFloat(cutoffEl.value);
+    });
+
+    oscTypeEl.addEventListener("change", updateKeys);
+
+    updateKeys();
+  </script>
+</body>
+</html>
